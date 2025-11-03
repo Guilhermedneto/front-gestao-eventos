@@ -1,0 +1,92 @@
+// Prisma Schema para SQL Server
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// Tabela de Usuários
+model User {
+  id           Int      @id @default(autoincrement())
+  firebaseUid  String   @unique @map("firebase_uid") @db.VarChar(255)
+  email        String   @db.VarChar(255)
+  displayName  String?  @map("display_name") @db.VarChar(255)
+  photoUrl     String?  @map("photo_url") @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relações
+  events       Event[]
+  attendances  Attendance[]
+
+  @@map("users")
+}
+
+// Tabela de Eventos
+model Event {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  type        String   @db.VarChar(50) // feira, evento, congresso, workshop
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  location    String?  @db.VarChar(500)
+  description String?  @db.Text
+  createdBy   Int      @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relações
+  creator     User       @relation(fields: [createdBy], references: [id])
+  invites     Invite[]
+  attendances Attendance[]
+
+  @@index([createdBy])
+  @@index([startDate])
+  @@map("events")
+}
+
+// Tabela de Convites
+model Invite {
+  id           Int       @id @default(autoincrement())
+  eventId      Int       @map("event_id")
+  guestName    String    @map("guest_name") @db.VarChar(255)
+  guestEmail   String    @map("guest_email") @db.VarChar(255)
+  qrCode       String    @unique @map("qr_code") @db.VarChar(100)
+  qrCodeImage  String?   @map("qr_code_image") @db.Text // Base64
+  emailSent    Boolean   @default(false) @map("email_sent")
+  sentAt       DateTime? @map("sent_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  // Relações
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  attendances  Attendance[]
+
+  @@index([eventId])
+  @@index([qrCode])
+  @@index([emailSent])
+  @@map("invites")
+}
+
+// Tabela de Presenças
+model Attendance {
+  id           Int      @id @default(autoincrement())
+  eventId      Int      @map("event_id")
+  inviteId     Int      @map("invite_id")
+  guestName    String   @map("guest_name") @db.VarChar(255)
+  guestEmail   String   @map("guest_email") @db.VarChar(255)
+  checkedInAt  DateTime @default(now()) @map("checked_in_at")
+  checkedInBy  Int      @map("checked_in_by")
+  location     String?  @db.VarChar(255)
+
+  // Relações
+  event        Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  invite       Invite @relation(fields: [inviteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user         User   @relation(fields: [checkedInBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([eventId])
+  @@index([checkedInAt])
+  @@map("attendances")
+}
