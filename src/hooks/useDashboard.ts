@@ -39,7 +39,7 @@ export function useDashboard() {
   const loadStats = async () => {
     try {
       setLoadingStats(true)
-      const response = await fetch('/api/stats')
+      const response = await fetch(`${PYTHON_API_URL}/api/stats`)
       if (response.ok) {
         const data = await response.json()
         setStats(data)
